@@ -15,6 +15,15 @@
       "args": ["develop"],
       "autoAttachChildProcesses": true,
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Attach to Node",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "${workspaceFolder}"
     }
   ]
 }

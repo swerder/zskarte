@@ -18,6 +18,8 @@ RUN npm run lint:server
 # npm build
 RUN NODE_ENV=production npm run build:server && rm -rf /app/packages/server/src
 
+#throw away dependencies not needed for run
+RUN npm prune --omit=dev
 
 FROM node:20.18.1-slim AS release
 # switzerchees: Optimize for alpine again fix sharp install issue first
@@ -29,9 +31,12 @@ ENV HOST=0.0.0.0
 USER node
 EXPOSE 1337
 
-COPY --from=build --chown=node:node /app/node_modules /app/node_modules
-COPY --from=build --chown=node:node /app/packages/server /app/packages/server
-COPY --from=build --chown=node:node /app/package.json /app/package.json
-
 # start command
 CMD ["npm", "run", "start:server:prod"] 
+
+LABEL org.opencontainers.image.source=https://github.com/swerder/zskarte
+LABEL org.opencontainers.image.description="Zivilschutz Karte Server (fork by swerder)"
+LABEL org.opencontainers.image.licenses=MIT
+COPY --from=build --chown=node:node /app/package.json /app/package.json
+COPY --from=build --chown=node:node /app/node_modules /app/node_modules
+COPY --from=build --chown=node:node /app/packages/server /app/packages/server

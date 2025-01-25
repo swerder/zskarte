@@ -11,6 +11,7 @@
     "dev": "strapi develop",
     "start": "strapi start",
     "build": "strapi build",
+    "debug": "node --inspect=0.0.0.0:9229 ./../../node_modules/@strapi/strapi/bin/strapi.js develop",
     "regenerate": "strapi ts:generate-types",
     "export": "config-sync export --yes --type user-role",
     "strapi": "strapi"
