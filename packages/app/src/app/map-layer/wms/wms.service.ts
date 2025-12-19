@@ -1,13 +1,14 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from, of, tap } from 'rxjs';
+import { Observable, firstValueFrom, from, of, tap } from 'rxjs';
 import { Coordinate } from 'ol/coordinate';
 import { mercatorProjection, swissProjection } from '../../helper/projections';
-import { MapLayer, WMSMapLayer, WmsSource, WmsSourceApi } from '@zskarte/types';
+import { MapLayer, MapSource, WMSMapLayer, WmsSource, WmsSourceApi } from '@zskarte/types';
 import WMTSCapabilities from 'ol/format/WMTSCapabilities';
 import OlTileWMTS, { optionsFromCapabilities } from 'ol/source/WMTS';
 import WMSCapabilities from 'ol/format/WMSCapabilities';
 import { ServerType, DEFAULT_VERSION as WMS_DEFAULT_VERSION, getLegendUrl } from 'ol/source/wms';
 import TileWMS from 'ol/source/TileWMS';
+//import TileImage from 'ol/source/TileImage';
 import OlTileLayer from '../../map-renderer/utils';
 import ImageLayer from 'ol/layer/Image';
 import ImageWMS from 'ol/source/ImageWMS';
@@ -16,9 +17,24 @@ import { ApiResponse, ApiService } from '../../api/api.service';
 import TileGrid, { Options as TileGridOptions } from 'ol/tilegrid/TileGrid';
 import { getForProjection } from 'ol/tilegrid';
 import { MapLayerService } from '../map-layer.service';
+import { WmsSourceCredentials, db } from '../../db/db';
+import { ConfirmationDialogComponent } from 'src/app/confirmation-dialog/confirmation-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
+import { WmsCredentialsComponent } from './wms-credentials/wms-credentials.component';
 
 const ATTRIBUTION_POPUP_STYLE =
   'position: absolute; top: -80vh; width: 500px; background-color: white; text-align: left; padding: 20px; margin-left: calc(50% - 250px)';
+
+interface SourceOptions {
+  url: string;
+  params: {
+    [key: string]: unknown;
+  };
+  serverType: ServerType;
+  crossOrigin: string;
+  attributions: string | string[];
+  tileLoadFunction?: (tile: any, src: string) => void; //tile:TileImage
+}
 
 @Injectable({
   providedIn: 'root',
@@ -26,6 +42,7 @@ const ATTRIBUTION_POPUP_STYLE =
 export class WmsService {
   private _api = inject(ApiService);
   private _mapLayerService = inject(MapLayerService);
+  private _dialog = inject(MatDialog);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _capabilitiesCache: Map<string, any> = new Map();
@@ -141,33 +158,123 @@ export class WmsService {
     return url;
   }
 
-  async getWMSCapa(source: WmsSource) {
+  //https://secure.geowms.my.bl.ch
+  private async _getWmsSourceCredentials(source: MapSource): Promise<WmsSourceCredentials | undefined | null> {
+    if (!source.secured) {
+      return undefined;
+    }
+    const mode = sessionStorage.getItem('wmsCredentials');
+    if (mode === 'simple') {
+      return null;
+    }
+    let credentials = await db.wmsSourceCredentials.get(source.url);
+    if (!credentials) {
+      const login = this._dialog.open(WmsCredentialsComponent, {
+        data: source.url,
+      });
+      credentials = await firstValueFrom(login.afterClosed());
+      if (credentials) {
+        credentials.url = source.url;
+        await db.wmsSourceCredentials.put(credentials);
+      }
+    }
+    return credentials;
+  }
+
+  private async _clearWmsSourceCredentials(source: MapSource) {
+    return await db.wmsSourceCredentials.delete(source.url);
+  }
+
+  async _retryIfInvalidCredentials(response: Response, source: WmsSource) {
+    if (!response.ok) {
+      if (response.status === 401) {
+        if (source.secured) {
+          if (sessionStorage.getItem('wmsCredentials') === 'simple') {
+            const confirm = this._dialog.open(ConfirmationDialogComponent, {
+              data: 'wmsSecuredInvalidCredentialsNeedHardReload',
+            });
+            await firstValueFrom(confirm.afterClosed());
+            throw new Error('WMS Source configuration need secured flag');
+          }
+          const confirm = this._dialog.open(ConfirmationDialogComponent, {
+            data: 'wmsSecuredInvalidCredentialsRetry',
+          });
+          if (await firstValueFrom(confirm.afterClosed())) {
+            await this._clearWmsSourceCredentials(source);
+            return true;
+          } else {
+            throw new Error('missing or invalid credentials');
+          }
+        } else {
+          const confirm = this._dialog.open(ConfirmationDialogComponent, {
+            data: 'wmsNeedsCredentialButNotMarkedAsSecure',
+          });
+          await firstValueFrom(confirm.afterClosed());
+          throw new Error('WMS Source configuration need secured flag');
+        }
+      } else if (response.status === 403) {
+        const confirm = this._dialog.open(ConfirmationDialogComponent, {
+          data: 'wmsSecuredForbiddenCredentialsRetry',
+        });
+        if (await firstValueFrom(confirm.afterClosed())) {
+          await this._clearWmsSourceCredentials(source);
+          return true;
+        } else {
+          throw new Error('credentials without required rights');
+        }
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return false;
+  }
+
+  private static _getFetchOptionsWithCredentials(credentials: WmsSourceCredentials | undefined | null) {
+    if (credentials === undefined) {
+      return undefined;
+    }
+    if (credentials === null) {
+      return {
+        credentials: 'include',
+      } as RequestInit;
+    }
+
+    return {
+      headers: {
+        Authorization: 'Basic ' + btoa(credentials.user + ':' + credentials.password),
+      },
+      credentials: 'include',
+    } as RequestInit;
+  }
+
+  async getWMSCapa(source: WmsSource): Promise<any> {
     const capaUrl = source.url;
     if (this._capabilitiesCache.has(capaUrl)) {
       return this._capabilitiesCache.get(capaUrl);
     }
     const url = WmsService.getfullWMSCapaUrl(capaUrl);
     const parser = new WMSCapabilities();
-    return await fetch(url.toString())
-      .then((response) => {
-        return response.text();
-      })
-      .then((text) => {
-        const capa = parser.read(text);
-        this._capabilitiesCache.set(capaUrl, capa);
-        let attributionHtml: string[] | string = this.createDefaultAttribution(
-          url.hostname,
-          capa['Service']['Title'],
-          capa['Service']['AccessConstraints'],
-        );
-        attributionHtml = this.getAttribution(capa['Capability']['Layer']['Attribution'], attributionHtml);
-        this._capabilitiesAttributionCache.set(capaUrl, attributionHtml);
-        const customAttributions = this._mapLayerService.createAttributionFromArray(source.attribution);
-        if (customAttributions) {
-          this._sourceAttributionCache.set(source.url, customAttributions);
-        }
-        return capa;
-      });
+
+    const credentials = await this._getWmsSourceCredentials(source);
+    const response = await fetch(url.toString(), WmsService._getFetchOptionsWithCredentials(credentials));
+
+    if (await this._retryIfInvalidCredentials(response, source)) {
+      return this.getWMSCapa(source);
+    }
+    const text = await response.text();
+    const capa = parser.read(text);
+    this._capabilitiesCache.set(capaUrl, capa);
+    let attributionHtml: string[] | string = this.createDefaultAttribution(
+      url.hostname,
+      capa['Service']['Title'],
+      capa['Service']['AccessConstraints'],
+    );
+    attributionHtml = this.getAttribution(capa['Capability']['Layer']['Attribution'], attributionHtml);
+    this._capabilitiesAttributionCache.set(capaUrl, attributionHtml);
+    const customAttributions = this._mapLayerService.createAttributionFromArray(source.attribution);
+    if (customAttributions) {
+      this._sourceAttributionCache.set(source.url, customAttributions);
+    }
+    return capa;
   }
 
   async getWMSCapaLayers(source: WmsSource): Promise<MapLayer[]> {
@@ -309,7 +416,8 @@ export class WmsService {
       return [];
     }
     options.attributions =
-      this._sourceAttributionCache.get(mapLayer.source.url) ?? this._capabilitiesAttributionCache.get(mapLayer.source.url);
+      this._sourceAttributionCache.get(mapLayer.source.url) ??
+      this._capabilitiesAttributionCache.get(mapLayer.source.url);
 
     /*
     const scaling = 0.5;
@@ -351,6 +459,7 @@ export class WmsService {
     MaxScaleDenominator: number | undefined,
     tileSize: number | undefined,
     tileFormat: string | undefined,
+    credentials: WmsSourceCredentials | undefined | null,
   ) {
     const sourceParams: { [key: string]: unknown } = {
       LAYERS: layers,
@@ -359,7 +468,7 @@ export class WmsService {
     if (tileFormat) {
       sourceParams['FORMAT'] = tileFormat;
     }
-    const sourceOptions = {
+    const sourceOptions: SourceOptions = {
       //projection: swissProjection, //use projection from view, if different gutter produce error artefacts
       url: wmsUrl,
       params: sourceParams,
@@ -373,6 +482,17 @@ export class WmsService {
       minZoom: WmsService._scaleDominatorToZoom(MaxScaleDenominator),
       zIndex,
     };
+    if (credentials) {
+      sourceOptions.crossOrigin = 'use-credentials';
+      const fetchOptions = WmsService._getFetchOptionsWithCredentials(credentials);
+      sourceOptions.tileLoadFunction = function (imageTile: any, src: string) {
+        fetch(src, fetchOptions)
+          .then((r) => r.blob())
+          .then((blob) => {
+            (imageTile.getImage() as HTMLImageElement | HTMLVideoElement).src = URL.createObjectURL(blob);
+          });
+      };
+    }
     if (tiled) {
       let sourceOptionAddons = {};
       if (tileSize && mercatorProjection) {
@@ -418,7 +538,9 @@ export class WmsService {
     if (!capa) {
       return [];
     }
-    const capaInfos = capa['Capability']['Layer']['Layer'].find((capaLayer) => capaLayer.Name === mapLayer.serverLayerName);
+    const capaInfos = capa['Capability']['Layer']['Layer'].find(
+      (capaLayer) => capaLayer.Name === mapLayer.serverLayerName,
+    );
     if (!capaInfos) {
       return [];
     }
@@ -428,7 +550,9 @@ export class WmsService {
       this._mapLayerService.createAttributionFromArray(mapLayer.attribution) ??
       this.getAttribution(
         capaInfos['Attribution'],
-        this._sourceAttributionCache.get(mapLayer.source.url) ?? this._capabilitiesAttributionCache.get(mapLayer.source.url) ?? '',
+        this._sourceAttributionCache.get(mapLayer.source.url) ??
+          this._capabilitiesAttributionCache.get(mapLayer.source.url) ??
+          '',
       );
 
     let layerInfos = [capaInfos];
@@ -446,6 +570,7 @@ export class WmsService {
       }
     }
 
+    const credentials = await this._getWmsSourceCredentials(mapLayer.source);
     return layerInfos.map((info) =>
       WmsService._createWMSLayer(
         !mapLayer.noneTiled,
@@ -456,14 +581,15 @@ export class WmsService {
         mapLayer.opacity,
         mapLayer.zIndex,
         //use layer based value as fallback or as default based on splitIntoSubLayers value
-        mapLayer.splitIntoSubLayers ?
-          info.MinScaleDenominator ?? mapLayer.MinScaleDenominator
-        : mapLayer.MinScaleDenominator ?? info.MinScaleDenominator,
-        mapLayer.splitIntoSubLayers ?
-          info.MaxScaleDenominator ?? mapLayer.MaxScaleDenominator
-        : mapLayer.MaxScaleDenominator ?? info.MaxScaleDenominator,
+        mapLayer.splitIntoSubLayers
+          ? (info.MinScaleDenominator ?? mapLayer.MinScaleDenominator)
+          : (mapLayer.MinScaleDenominator ?? info.MinScaleDenominator),
+        mapLayer.splitIntoSubLayers
+          ? (info.MaxScaleDenominator ?? mapLayer.MaxScaleDenominator)
+          : (mapLayer.MaxScaleDenominator ?? info.MaxScaleDenominator),
         mapLayer.tileSize,
         mapLayer.tileFormat,
+        credentials,
       ),
     );
   }
@@ -488,6 +614,8 @@ export class WmsService {
       this._capabilitiesAttributionCache.get(mapLayer.source.url) ??
       '';
 
+    const credentials = await this._getWmsSourceCredentials(mapLayer.source);
+
     return [
       WmsService._createWMSLayer(
         !mapLayer.noneTiled,
@@ -501,6 +629,7 @@ export class WmsService {
         mapLayer.MaxScaleDenominator,
         mapLayer.tileSize,
         mapLayer.tileFormat,
+        credentials,
       ),
     ];
   }
@@ -539,7 +668,7 @@ export class WmsService {
       console.error('saveGlobalWMSSource', error);
     } else if (result) {
       //on save the referenced organisation is no returned
-      result.organization = { documentId: organizationId }
+      result.organization = { documentId: organizationId };
       return WmsService.mapWmsSourceResponse(result, organizationId);
     }
     return null;

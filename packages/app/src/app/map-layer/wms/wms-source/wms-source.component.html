@@ -67,6 +67,15 @@
         </mat-form-field>
         <div class="fullUrl">{{ fullUrl }}</div>
         <fieldset class="like-mat-form-field-outline">
+          <legend>{{ i18n.get('sourceSecured') }}</legend>
+          <mat-checkbox
+            [checked]="selectedSource.secured"
+            (change)="selectedSource.secured = $event.checked"
+            [disabled]="!selectedSource.owner"
+            >{{ i18n.get('sourceSecuredInfo') }}</mat-checkbox
+          >
+        </fieldset>
+        <fieldset class="like-mat-form-field-outline">
           <legend>{{ i18n.get('sourceAttribution') }}</legend>
           @if (selectedSource.attribution) {
             <div class="attributionTitle">

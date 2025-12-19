@@ -1,4 +1,4 @@
-<div mat-dialog-content>{{ data }}</div>
+<div mat-dialog-content>{{ i18n.get(messageKey) }}</div>
 <div mat-dialog-actions align="end">
   <button mat-stroked-button [mat-dialog-close]="true" (click)="cancel()" [innerText]="i18n.get('cancel')"></button>
   <button

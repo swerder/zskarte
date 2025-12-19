@@ -2067,6 +2067,16 @@ export class I18NService {
       en: 'Layer type',
       fr: 'Type de calque',
     },
+    sourceSecured: {
+      de: 'Anmeldung erforderlich',
+      en: 'Login required',
+      fr: 'Connexion requise',
+    },
+    sourceSecuredInfo: {
+      de: 'Für die Nutzung dieser Quelle ist eine Registrierung und Anmeldung erforderlich.',
+      en: 'Registration and login are required to use this source.',
+      fr: "L'inscription et la connexion sont requises pour utiliser cette source.",
+    },
     sourceAttribution: {
       de: 'Quellenangabe',
       en: 'source attribution',
@@ -2086,6 +2096,36 @@ export class I18NService {
       de: 'Hinzufügen',
       en: 'Add',
       fr: 'Ajouter',
+    },
+    wmsSecuredInvalidCredentialsRetry: {
+      de: 'Die WMS-Anmeldedaten fehlen oder sind ungültig. Möchten Sie es erneut versuchen?',
+      en: 'WMS login credentials are missing or invalid, do you want to retry?',
+      fr: 'Les informations de connexion WMS sont manquantes ou invalides, voulez-vous réessayer?',
+    },
+    wmsSecuredInvalidCredentialsNeedHardReload: {
+      de: 'Die WMS-Anmeldedaten fehlen oder sind ungültig. Zum neuanzeigen des Logins muss ein Force-Reload der seite gemacht werden.',
+      en: 'WMS login credentials are missing or invalid. To display the login again, a force reload of the page is required.',
+      fr: 'Les informations de connexion WMS sont manquantes ou invalides.Pour afficher à nouveau la page de connexion, un rechargement forcé de la page est nécessaire.',
+    },
+    wmsSecuredForbiddenCredentialsRetry: {
+      de: 'Die von Ihnen verwendeten WMS-Anmeldedaten haben keinen Zugriff. Möchten Sie es erneut versuchen?',
+      en: "The used WMS login credentials don't have access, do you want to retry?",
+      fr: "Les identifiants de connexion WMS utilisés ne permettent pas l'accès. Voulez-vous réessayer?",
+    },
+    wmsNeedsCredentialButNotMarkedAsSecure: {
+      de: 'WMS Quelle verlangt ein login hat aber das "Anmeldung erforderlich" flag in den configs nicht gesetzt.',
+      en: 'The WMS source requires a login but has not set the "Login required" flag in the configs.',
+      fr: "La source WMS nécessite une connexion, mais l'option \"Connexion requise\" n'est pas activée dans les configurations.",
+    },
+    wmsCredentials: {
+      de: 'WMS-Anmeldedaten',
+      en: 'WMS Login Credentials',
+      fr: 'Identifiants de connexion WMS',
+    },
+    user: {
+      de: 'Benutzer',
+      en: 'User',
+      fr: "Nom d'utilisateur",
     },
     wmsLayerSettings: {
       de: 'Einstellungen der WMS-Ebene',

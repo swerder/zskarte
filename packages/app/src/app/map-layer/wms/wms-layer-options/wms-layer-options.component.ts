@@ -124,7 +124,7 @@ export class WmsLayerOptionsComponent {
   async onSelectionChange($event: MatSelectChange) {
     if ($event.value === '_CUSTOM_') {
       if (this.layer.source) {
-        this.custom_source = { url: this.layer.source?.url };
+        this.custom_source = { url: this.layer.source?.url, secured: this.layer.source?.secured };
         this.layer.source = $event.value;
       }
     } else if ($event.value) {

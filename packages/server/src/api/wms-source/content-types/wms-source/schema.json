@@ -24,6 +24,9 @@
     "url": {
       "type": "string"
     },
+    "secured": {
+      "type": "boolean"
+    },
     "attribution": {
       "type": "json"
     },

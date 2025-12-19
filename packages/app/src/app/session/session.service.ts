@@ -106,6 +106,9 @@ export class SessionService {
           }
           this._state.setDisplayState(displayState);
           if (queryParams) {
+            if (queryParams['wmsCredentials']) {
+              sessionStorage.setItem('wmsCredentials', queryParams['wmsCredentials']);
+            }
             this._state.updateDisplayState((draft) =>
               SessionService.overrideDisplayStateFromQueryParams(draft, queryParams),
             );

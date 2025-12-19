@@ -10,8 +10,8 @@ import { MatButtonModule } from '@angular/material/button';
   imports: [MatDialogModule, MatButtonModule],
 })
 export class ConfirmationDialogComponent {
-  dialogRef = inject<MatDialogRef<ConfirmationDialogComponent>>(MatDialogRef);
-  data = inject(MAT_DIALOG_DATA);
+  dialogRef = inject<MatDialogRef<ConfirmationDialogComponent, boolean>>(MatDialogRef);
+  messageKey = inject<string>(MAT_DIALOG_DATA);
   i18n = inject(I18NService);
 
   cancel() {

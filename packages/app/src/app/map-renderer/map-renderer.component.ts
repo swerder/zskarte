@@ -17,7 +17,6 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
 import { GuestLimitDialogComponent } from '../guest-limit-dialog/guest-limit-dialog.component';
 import { areCoordinatesEqual, removeCoordinates } from '../helper/coordinates';
 import { SessionService } from '../session/session.service';
-import { I18NService } from '../state/i18n.service';
 import { ZsMapStateService } from '../state/state.service';
 import { ZsMapOLFeatureProps } from './elements/base/ol-feature-props';
 import { MapOverlayService } from './map-overlay.service';
@@ -32,7 +31,6 @@ import { MapSelectService } from './map-select.service';
   imports: [AsyncPipe, MatIcon, MatMiniFabButton, MatButtonModule],
 })
 export class MapRendererComponent implements AfterViewInit {
-  public i18n = inject(I18NService);
   private _state = inject(ZsMapStateService);
   private _session = inject(SessionService);
   private _dialog = inject(MatDialog);
@@ -180,7 +178,7 @@ export class MapRendererComponent implements AfterViewInit {
 
       if (remove) {
         const confirmation = this._dialog.open(ConfirmationDialogComponent, {
-          data: this.i18n.get('removeFeatureFromMapConfirm'),
+          data: 'removeFeatureFromMapConfirm',
         });
         const result = await lastValueFrom(confirmation.afterClosed());
         if (result) {

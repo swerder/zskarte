@@ -37,6 +37,9 @@
     "custom_source": {
       "type": "string"
     },
+    "custom_source_secured": {
+      "type": "boolean"
+    },
     "options": {
       "type": "json"
     },

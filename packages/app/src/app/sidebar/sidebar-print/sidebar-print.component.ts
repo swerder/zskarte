@@ -215,7 +215,7 @@ export class SidebarPrintComponent {
       if (isWebGLSupported()) {
         //with webGL rendering there are pontential support/memory problems and the image is shrinked if to big
         const confirmation = this._dialog.open(ConfirmationDialogComponent, {
-          data: this.i18n.get('deactivateWebGL'),
+          data: 'deactivateWebGL',
         });
         confirmation.afterClosed().subscribe((res) => {
           if (res) {
