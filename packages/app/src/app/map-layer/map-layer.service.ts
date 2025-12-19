@@ -94,7 +94,7 @@ export class MapLayerService {
       const sourceId = layerSource.wms_source.id;
       source = sources.find((source) => source.id === sourceId);
     } else if (layerSource.custom_source) {
-      source = { url: layerSource.custom_source };
+      source = { url: layerSource.custom_source, secured: layerSource.custom_source_secured === true };
     }
     return source;
   }

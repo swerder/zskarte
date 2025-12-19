@@ -442,6 +442,7 @@ export interface ApiMapLayerMapLayer extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private;
     custom_source: Schema.Attribute.String;
+    custom_source_secured: Schema.Attribute.Boolean;
     label: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::map-layer.map-layer'> & Schema.Attribute.Private;
@@ -571,6 +572,7 @@ export interface ApiWmsSourceWmsSource extends Struct.CollectionTypeSchema {
     organization: Schema.Attribute.Relation<'oneToOne', 'api::organization.organization'>;
     public: Schema.Attribute.Boolean;
     publishedAt: Schema.Attribute.DateTime;
+    secured: Schema.Attribute.Boolean;
     type: Schema.Attribute.Enumeration<['wms', 'wmts']>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private;

@@ -46,6 +46,12 @@ export type LocalMapLayerSettings = IZsMapOrganizationMapLayerSettings & {
   id: string;
 };
 
+export interface WmsSourceCredentials {
+  url: string;
+  user: string;
+  password: string;
+}
+
 export type PatchJournalEntry = {
   id?: number;
   entry: Partial<JournalEntry>;
@@ -68,6 +74,7 @@ export class AppDB extends Dexie {
   localBlobMeta!: Table<LocalBlobMeta, number>;
   localOperation!: Table<IZsMapOperation, number>;
   localWmsSource!: Table<WmsSource, number>;
+  wmsSourceCredentials!: Table<WmsSourceCredentials, string>;
   localMapLayer!: Table<LocalMapLayer, string>;
   localMapLayerSettings!: Table<LocalMapLayerSettings, string>;
   patchJournalEntries!: Table<PatchJournalEntry, number>;
@@ -146,11 +153,12 @@ export class AppDB extends Dexie {
         }
       });
     //new modifications can be done here with only modify version number(or adding new version block), but 'localMapBlobs: null,' and 'localMapMeta: null,' need to stay here (to remove old table).
-    this.version(9).stores({
+    this.version(9.1).stores({
       localMapBlobs: null,
       localMapMeta: null,
       localOperation: 'id,phase',
       localWmsSource: 'id',
+      wmsSourceCredentials: 'url',
       localMapLayer: 'fullId,id',
       localMapLayerSettings: 'id',
       patchJournalEntries: '++id, [operationId+organizationId], organizationId, operationId, uuid, documentId',

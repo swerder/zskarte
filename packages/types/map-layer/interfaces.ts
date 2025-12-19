@@ -12,11 +12,13 @@ export interface WmsSource extends PresistedSettings {
   label: string;
   type: 'wmts' | 'wms';
   attribution?: [string, string][];
+  secured: boolean;
 }
 
 //use the partial part to prevent need to use type guards in template
 export interface MapSource extends Partial<WmsSource> {
   url: string;
+  secured: boolean;
 }
 
 export interface WmsSourceApi extends WmsSource {
@@ -117,6 +119,7 @@ export interface MapLayerOptionsApi extends Omit<MapLayerAllFields, keyof MapLay
 export interface MapLayerSourceApi {
   wms_source?: WmsSource | number;
   custom_source?: string;
+  custom_source_secured?: boolean;
 }
 
 export interface MapLayerApi extends Partial<PresistedSettings>, MapLayerGeneralSettings, MapLayerSourceApi {

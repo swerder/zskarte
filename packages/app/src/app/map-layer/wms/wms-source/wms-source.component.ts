@@ -96,7 +96,7 @@ export class WmsSourceComponent {
 
   onSelectionChange($event: MatSelectChange) {
     if ($event.value === '__NEW__') {
-      const newSource: WmsSource = { type: 'wms', url: 'https://', label: '', owner: true, public: false };
+      const newSource: WmsSource = { type: 'wms', url: 'https://', label: '', owner: true, public: false, secured: false };
       this.selectedSource = newSource;
       this.sources.push(newSource);
     } else if ($event.value === '__SELECT__') {
