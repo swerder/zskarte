@@ -654,7 +654,7 @@ export class WmsService {
     if (!source.owner) {
       return null;
     }
-    const { owner, ...validFields } = source;
+    const { owner, id, documentId, ...validFields } = source;
     let response: ApiResponse<WmsSourceApi>;
     if (source.documentId) {
       response = await this._api.put(`/api/wms-sources/${source.documentId}`, {

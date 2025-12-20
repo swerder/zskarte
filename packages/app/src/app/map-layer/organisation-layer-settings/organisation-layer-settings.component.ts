@@ -196,16 +196,19 @@ export class OrganisationLayerSettingsComponent {
               if (!override) {
                 // keep old, create new
                 delete layer.id;
+                delete layer.documentId
               }
             } else {
               // not owner, create new
               layer.public = false;
               delete layer.id;
+                delete layer.documentId
             }
           }
         } else {
           // unknown old values, create new
           delete layer.id;
+          delete layer.documentId
         }
       }
       // for the new generated layer you'r the owner

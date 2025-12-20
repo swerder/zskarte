@@ -103,6 +103,7 @@ export class MapLayerService {
     const source = MapLayerService.getMapSource(mapLayerApi, sources);
     const layer: MapLayer = {
       id: mapLayerApi.id,
+      documentId: mapLayerApi.documentId,
       label: mapLayerApi.label,
       serverLayerName: mapLayerApi.serverLayerName,
       type: mapLayerApi.type,
@@ -131,6 +132,7 @@ export class MapLayerService {
     const cleanedOptions: MapLayerAllFields & LocalMapLayerMeta = { ...mapLayer };
     // delete values for main object / from PresistedSettings
     delete cleanedOptions.id;
+    delete cleanedOptions.documentId;
     delete cleanedOptions.owner;
     delete cleanedOptions.public;
     // delete values for main object & from MapLayerGeneralSettings
@@ -149,7 +151,6 @@ export class MapLayerService {
     delete cleanedOptions.styleBlobId;
     const options: MapLayerOptionsApi = cleanedOptions;
     return {
-      id: mapLayer.id,
       public: mapLayer.public,
       label: mapLayer.label,
       serverLayerName: mapLayer.serverLayerName,
@@ -169,8 +170,8 @@ export class MapLayerService {
     }
     let response: ApiResponse<MapLayerApi>;
     const layerApi = MapLayerService.convertMapLayerToApi(mapLayer);
-    if (mapLayer.id) {
-      response = await this._api.put(`/api/map-layers/${mapLayer.id}`, {
+    if (mapLayer.documentId) {
+      response = await this._api.put(`/api/map-layers/${mapLayer.documentId}`, {
         data: { ...layerApi, organization: organizationId },
       });
     } else {
