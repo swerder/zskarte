@@ -173,7 +173,7 @@ export class WmsService {
         data: source.url,
       });
       credentials = await firstValueFrom(login.afterClosed());
-      if (credentials) {
+      if (credentials?.user && credentials?.password) {
         credentials.url = source.url;
         await db.wmsSourceCredentials.put(credentials);
       }
@@ -187,7 +187,17 @@ export class WmsService {
 
   async _retryIfInvalidCredentials(response: Response, source: WmsSource) {
     if (!response.ok) {
-      if (response.status === 401) {
+      if (response.status === 504 || response.status === 0) {
+        const confirm = this._dialog.open(ConfirmationDialogComponent, {
+          data: 'wmsAccessErrorRetry',
+        });
+        if (await firstValueFrom(confirm.afterClosed())) {
+          await this._clearWmsSourceCredentials(source);
+          return true;
+        } else {
+          throw new Error('CORS Error / Network Error / Timeout');
+        }
+      } else if (response.status === 401) {
         if (source.secured) {
           if (sessionStorage.getItem('wmsCredentials') === 'simple') {
             const confirm = this._dialog.open(ConfirmationDialogComponent, {
@@ -255,7 +265,16 @@ export class WmsService {
     const parser = new WMSCapabilities();
 
     const credentials = await this._getWmsSourceCredentials(source);
-    const response = await fetch(url.toString(), WmsService._getFetchOptionsWithCredentials(credentials));
+    let response;
+    try {
+      response = await fetch(url.toString(), WmsService._getFetchOptionsWithCredentials(credentials));
+    } catch(error: any){
+       if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        response = {ok: false, status: 0};
+      } else {
+        throw error;
+      }
+    }
 
     if (await this._retryIfInvalidCredentials(response, source)) {
       return this.getWMSCapa(source);

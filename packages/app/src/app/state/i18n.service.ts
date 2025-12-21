@@ -2097,6 +2097,11 @@ export class I18NService {
       en: 'Add',
       fr: 'Ajouter',
     },
+    wmsAccessErrorRetry: {
+      de: 'Der Zugriff auf die WMS Quelle hat nicht geklappt evtl. sind die credentials falsch. Möchten Sie es erneut versuchen?',
+      en: 'Access to the WMS source failed; the credentials may be incorrect. Do you want to retry?',
+      fr: "L'accès à la source WMS a échoué; les informations d'identification sont peut-être incorrectes. Voulez-vous réessayer?",
+    },
     wmsSecuredInvalidCredentialsRetry: {
       de: 'Die WMS-Anmeldedaten fehlen oder sind ungültig. Möchten Sie es erneut versuchen?',
       en: 'WMS login credentials are missing or invalid, do you want to retry?',
