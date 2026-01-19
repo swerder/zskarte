@@ -15,7 +15,7 @@ ADD . /app
 # npm lint
 RUN npm run lint:server
 # npm build
-RUN NODE_ENV=production npm run build:server && rm -rf /app/packages/server/src
+RUN NODE_ENV=production npm run build:types && npm run build:common && npm run build:server && rm -rf /app/packages/server/src
 
 #throw away dependencies not needed for run
 RUN npm prune --omit=dev
