@@ -5,6 +5,7 @@ import {
   importProvidersFrom,
   provideAppInitializer,
   inject,
+  provideZoneChangeDetection,
 } from '@angular/core';
 import { enablePatches } from 'immer';
 import { appFactory } from './app/app-factory';
@@ -53,6 +54,8 @@ import { provideRouter } from '@angular/router';
 import { appRoutes } from './app/app-routes';
 import { JournalService } from './app/journal/journal.service';
 import { SearchService } from './app/search/search.service';
+import { ChangesetService } from './app/changeset/changeset.service';
+import { SidebarService } from './app/sidebar/sidebar.service';
 
 // enable immerjs patches
 enablePatches();
@@ -113,6 +116,8 @@ bootstrapApplication(AppComponent, {
         inject(ApiService),
         inject(JournalService),
         inject(SearchService),
+        inject(ChangesetService),
+        inject(SidebarService),
       );
       return initializerFn();
     }),
@@ -121,5 +126,6 @@ bootstrapApplication(AppComponent, {
     provideHttpClient(withInterceptorsFromDi()),
     provideAnimations(),
     provideRouter(appRoutes),
+    provideZoneChangeDetection(),
   ],
 }).catch((err) => console.error(err));

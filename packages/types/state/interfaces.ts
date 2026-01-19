@@ -3,8 +3,113 @@ import { MapLayer, WmsSource } from '../map-layer/interfaces';
 import { FillStyle, IconsOffset } from '../sign/interfaces';
 import { Feature } from 'ol';
 import { PermissionType } from '../session/interfaces';
-import { Sort } from '@angular/material/sort';
 import { Extent } from 'ol/extent';
+import { Patch } from 'immer';
+
+
+//copied from '@angular/material/sort' as not accessible here
+type SortDirection = 'asc' | 'desc' | '';
+interface Sort {
+    active: string;
+    direction: SortDirection;
+}
+
+export interface IZsChangeset {
+  parentChangesetId: string;
+  id: string;
+  operationId: string;
+  messageNumber?: number;
+  changedDrawElements: string[];
+  deletedDrawElements: string[];
+  drawElementsLastChangeset: Record<string, string>;
+  layer?: string;
+  organisationId: string;
+  author: string;
+  authorIp?: string;
+  serverId?: string;
+  serverSavedAt?: number;
+  manualDescription?: string;
+  description: Set<string>;
+  startAt: number;
+  firstChangeAt?: number;
+  lastChangeAt?: number;
+  endAt?: number;
+  saved: boolean;
+  applied?: boolean;
+  patches: Patch[];
+  inversePatches: Patch[];
+  manual: boolean;
+  autoMerged?: boolean;
+  mergedAt?: number;
+  mergeConflictChangesetIds?: string[];
+  parentChangesetIdBeforeMerge?: string;
+  drawElementsLastChangesetBeforeMerge?: Record<string, string>;
+  patchesRevertedForMerge?: Patch[];
+  inversePatchesRevertedForMerge?: Patch[];
+}
+
+export interface IZsChangesetExport extends IZsChangeset {
+  baseMapState?: ZsMapState;
+}
+
+export interface IZsChangesetInternal extends IZsChangeset {
+  cleaned?: boolean;
+  stashed?: boolean;
+  baseMapState?: ZsMapState;
+  currentMapState?: ZsMapState;
+  origDrawElements?: Record<string, ZsMapDrawElementState | null>;
+  thereDrawElements?: Record<string, ZsMapDrawElementState | null>;
+  ourDrawElements?: Record<string, ZsMapDrawElementState | null>;
+  mergedDrawElements?: Record<string, ZsMapDrawElementState | null>;
+}
+
+export interface IZsChangesetValue {
+  path: string;
+  value: any;
+}
+
+export interface IZsChangesetConflictValue {
+  path: string;
+  orig: any;
+  there: any;
+  our: any;
+  conflict: boolean;
+  resolved: boolean;
+  selected: number;
+}
+
+export interface IZsChangesetConflict {
+  drawElementId: string;
+  missing: { orig: boolean; there: boolean; our: boolean };
+  requiredPrefChangesetId: string;
+  additionalChangesets: string[];
+  values: IZsChangesetConflictValue[];
+  conflict: boolean;
+}
+
+export interface IZsChangesetConflictDetails {
+  changeset: IZsChangesetInternal;
+  conflicts: IZsChangesetConflict[];
+  meta: IZsChangesetConflictValue[];
+  metaConflict: boolean;
+  hasConflicts: boolean;
+}
+
+export class ChangesetInconsistentError extends Error {
+  constructor(public changesetId: string) {
+    super(`Changeset ${changesetId} is inconsistent with current MapState`);
+    this.name = 'ChangesetInconsistentError';
+    Object.setPrototypeOf(this, ChangesetInconsistentError.prototype);
+  }
+}
+
+export class ChangesetMissingError extends Error {
+  constructor(public changesetId: string) {
+    super(`Changeset ${changesetId} does not exist`);
+    this.name = 'ChangesetMissingError';
+    Object.setPrototypeOf(this, ChangesetMissingError.prototype);
+  }
+}
 
 export enum ZsMapStateSource {
   OPEN_STREET_MAP = 'openStreetMap',
@@ -19,7 +124,17 @@ export const zsMapStateSourceToDownloadUrl = {
   [ZsMapStateSource.LOCAL]: 'https://zskarte.blob.core.windows.net/etienne/ch.swisstopo.pmtiles',
 };
 
-export type ZsMapState = IZsMapStateV2;
+export type ZsMapState = IZsMapStateV3;
+export interface IZsMapStateV3 {
+  version: number;
+  id: string;
+  name?: string;
+  layers: Record<string, ZsMapLayerState>;
+  drawElements: Record<string, ZsMapDrawElementState>;
+  drawElementChangesetIds: Record<string, string[]>;
+  changesetIds?: string[];
+  center: Coordinate;
+}
 
 export interface IZsMapStateV2 {
   version: number;
@@ -39,7 +154,7 @@ export interface IZsMapStateV1 {
   center: Coordinate;
 }
 
-export type ZsMapStateAllVersions = IZsMapStateV1 | IZsMapStateV2;
+export type ZsMapStateAllVersions = IZsMapStateV1 | IZsMapStateV2 | IZsMapStateV3;
 
 export const getDefaultZsMapState = (): ZsMapState => {
   return {} as ZsMapState;
@@ -53,6 +168,7 @@ export interface IPositionFlag {
 export enum ZsMapDisplayMode {
   DRAW = 'draw',
   HISTORY = 'history',
+  CHANGESET_MERGE = 'changesetMerge',
 }
 
 export interface IZsMapDisplayState {
@@ -84,6 +200,7 @@ export interface IZsMapDisplayState {
   journalFilter: IZsJournalFilter;
   searchConfig: IZsGlobalSearchConfig;
   journalMessageEditConfig: IZsJournalMessageEditConfig;
+  changesetConfig: IZsChangesetConfig;
 }
 
 export interface IZsJournalFilter {
@@ -98,7 +215,7 @@ export interface IZsGlobalSearchConfig {
   filterMapSection: boolean;
   filterByDistance: boolean;
   maxDistance: number;
-  filterByArea: false;
+  filterByArea: boolean;
   area: Extent | null;
   sortedByDistance: boolean;
   distanceReferenceCoordinate: Coordinate | null;
@@ -108,6 +225,10 @@ export interface IZsJournalMessageEditConfig {
   showMap: boolean;
   showAllAddresses: boolean;
   showLinkedText: boolean;
+}
+
+export interface IZsChangesetConfig {
+  automerge: boolean;
 }
 
 //DIN paper dimension in mm, landscape

@@ -1,4 +1,4 @@
-FROM node:20.18.1-slim AS build
+FROM node:22.14.0-slim AS build
 
 # Create app directory
 WORKDIR /app
@@ -7,7 +7,6 @@ WORKDIR /app
 ADD ./package.json /app/package.json
 ADD ./package-lock.json /app/package-lock.json
 ADD ./packages/server/package.json /app/packages/server/package.json
-ADD ./patches/* /app/patches/
 RUN npm ci 
 
 # Copy all files
@@ -21,9 +20,9 @@ RUN NODE_ENV=production npm run build:server && rm -rf /app/packages/server/src
 #throw away dependencies not needed for run
 RUN npm prune --omit=dev
 
-FROM node:20.18.1-slim AS release
+FROM node:22.14.0-slim AS release
 # switzerchees: Optimize for alpine again fix sharp install issue first
-# FROM node:20.18.1-alpine AS release
+# FROM node:22.14.0-alpine AS release
 # RUN apk update && apk add --no-cache tzdata
 
 WORKDIR /app

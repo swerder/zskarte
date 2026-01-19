@@ -13,6 +13,8 @@ import { ZsMapStateService } from '../state/state.service';
 import { I18NService } from '../state/i18n.service';
 import saveAs from 'file-saver';
 import { SearchService } from '../search/search.service';
+import { IZsChangeset } from '@zskarte/types';
+import { ChangesetService } from '../changeset/changeset.service';
 
 @Injectable({
   providedIn: 'root',
@@ -22,6 +24,7 @@ export class JournalService {
   private _session = inject(SessionService);
   private _pdfServiceFactory = inject(PdfServiceFactory);
   private _i18n = inject(I18NService);
+  private _changeset = inject(ChangesetService);
   private _search!: SearchService;
   private _state!: ZsMapStateService;
   private isOnline = toSignal(this._session.observeIsOnline());
@@ -30,22 +33,22 @@ export class JournalService {
   private operationId = signal<string | null>(null);
   private organizationId = signal<string | null>(null);
   private journalResource = resource({
-    request: () => ({
+    params: () => ({
       operationId: this.operationId(),
       organizationId: this.organizationId(),
     }),
     loader: async (params) => {
-      if (!params.request.operationId || !params.request.organizationId) {
+      if (!params.params.operationId || !params.params.organizationId) {
         return [];
       }
       if (this._session.isWorkLocal()) {
         return await db.localJournalEntries
-          .where({ operationId: params.request.operationId, organizationId: params.request.organizationId })
+          .where({ operationId: params.params.operationId, organizationId: params.params.organizationId })
           .toArray();
       }
       //organization is implicit by session
       const { error, result } = await this._api.get<JournalEntry[]>(
-        `/api/journal-entries?operationId=${params.request.operationId}&pagination[pageSize]=1000`,
+        `/api/journal-entries?operationId=${params.params.operationId}&pagination[pageSize]=1000`,
       );
       if (error || !result) {
         throw 'error on fetch journal entries';
@@ -509,6 +512,18 @@ export class JournalService {
 
     this.journalResource.reload();
 
+    //create explicite changeset for messageNumber update
+    let changeset: IZsChangeset | undefined = undefined;
+    try {
+      changeset = await this._changeset.newChangeset(
+        undefined,
+        false,
+        true,
+        'Update messageNumbers after publish offline Journal entries.',
+      );
+    } catch (error) {
+      console.error('failed/delayed create new changeset for messageNumber update:', error);
+    }
     //update messageNumber on map if it's changed
     this._state.updateMapState((draft) => {
       if (draft?.drawElements) {
@@ -531,6 +546,23 @@ export class JournalService {
         }
       }
     });
+
+    //a new changeset should be created afterwards
+    if (changeset) {
+      try {
+        await this._state.finishCurrentChangeset();
+      } catch (error) {
+        console.error('failed finish current changeset, delay new changeset instead:', error);
+        changeset = undefined;
+      }
+    }
+    if (!changeset) {
+      try {
+        await this._changeset.newChangeset(undefined, false, true);
+      } catch (error) {
+        //ignore as it's expected to fail (but queued)
+      }
+    }
   }
 
   public startDrawing(entry: JournalEntry, value: boolean) {
@@ -679,6 +711,12 @@ export class JournalService {
     if (organizationFull?.logo?.provider === 'local') {
       organization.logo_url = `${environment.apiUrl}${organization.logo_url}`;
     }
+    let fileName = `${operation.name}_message${entry.messageNumber}_${new Date().toISOString().slice(0, 16)}.pdf`;
+    if (Object.keys(entry).length === 0){
+      operation.documentId = "";
+      operation.name = "";
+      fileName = `${organization.name}_message_template_${new Date().toISOString().slice(0, 10)}.pdf`;
+    }
     let entryUrl;
     if (entry.messageNumber && entry.createdAt) {
       entryUrl = `${window.location.origin}/main/journal?operationId=${operation.documentId}&messageNumber=${entry.messageNumber}`;
@@ -694,7 +732,6 @@ export class JournalService {
         url_entry: entryUrl,
       },
     ];
-    const fileName = `${operation.name}_message${entry.messageNumber}_${new Date().toISOString().slice(0, 16)}.pdf`;
     await pdfService.downloadPdf(template, data, fileName);
   }
 
