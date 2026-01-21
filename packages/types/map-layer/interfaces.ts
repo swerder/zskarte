@@ -1,8 +1,26 @@
 import { Extent } from 'ol/extent';
 
-interface PresistedSettings {
-  id?: number;
-  documentId?: string;
+export interface DocumentApi {
+  documentId: string;
+  id?: number; //deprecated
+}
+
+export interface RelationUpdateApi {
+  connect: DocumentApi[] | string[] | number[];
+}
+
+export function objectToRelationUpdateApi(obj: DocumentApi, forceId = false) {
+  //deprecated fallback logic
+  //for connecting Media to any document currently (5.33.0) still id is required...
+  if (forceId || (!obj.documentId && obj.id)) {
+    //V4 variant: return obj.id;
+    return { connect: [obj.id ?? -1] };
+  }
+  return { connect: [obj.documentId] };
+  //longhand: return { connect: [{ documentId: obj.documentId }] };
+}
+
+interface PresistedSettings extends Partial<DocumentApi> {
   owner: boolean;
   public: boolean;
 }
@@ -18,11 +36,10 @@ export interface WmsSource extends PresistedSettings {
 //use the partial part to prevent need to use type guards in template
 export interface MapSource extends Partial<WmsSource> {
   url: string;
-  secured: boolean;
 }
 
 export interface WmsSourceApi extends WmsSource {
-  organization?: { documentId: string };
+  organization?: DocumentApi;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -50,6 +67,7 @@ export interface MapLayer extends PresistedSettings, SelectedMapLayerSettings, M
   source?: MapSource | WmsSource;
   fullId: string;
   offlineAvailable?: boolean;
+  managed: boolean;
 }
 
 export interface WMSMapLayer extends MapLayer, GenericOptionalMapLayerOptions {
@@ -75,6 +93,8 @@ export interface GeoJSONMapLayer extends MapLayer, GenericOptionalMapLayerOption
   searchResultLabelMask?: string;
   searchMaxResultCount?: number;
 }
+
+export interface ShapeMapLayer extends GeoJSONMapLayer {}
 
 export interface CsvMapLayer extends GeoJSONMapLayer {
   delimiter: string;
@@ -109,21 +129,32 @@ export interface GeoAdminMapLayer extends MapLayer {
 export interface GeoAdminMapLayers {
   [key: string]: GeoAdminMapLayer;
 }
+export type MapLayerAllFields = Omit<
+  GeoAdminMapLayer & WMSMapLayer & GeoJSONMapLayer & ShapeMapLayer & CsvMapLayer,
+  'serverLayerName'
+> &
+  MapLayerGeneralSettings;
 
-export type MapLayerAllFields = Omit<Partial<GeoAdminMapLayer & WMSMapLayer & CsvMapLayer>, 'serverLayerName'> &
-  Partial<MapLayerGeneralSettings>;
-export interface MapLayerOptionsApi extends Omit<MapLayerAllFields, keyof MapLayer> {
+export interface MapLayerOptionsApi extends Omit<Partial<MapLayerAllFields>, keyof MapLayer> {
   opacity?: number;
 }
 
+export interface Media extends DocumentApi {
+  //for connecting Media to any document currently (5.33.0) still id is required...
+  id: number;
+  url: string;
+  name?: string;
+}
+
 export interface MapLayerSourceApi {
-  wms_source?: WmsSource | number;
+  wms_source?: WmsSource | RelationUpdateApi;
+  media_source?: Media | RelationUpdateApi;
   custom_source?: string;
   custom_source_secured?: boolean;
 }
 
 export interface MapLayerApi extends Partial<PresistedSettings>, MapLayerGeneralSettings, MapLayerSourceApi {
   options: MapLayerOptionsApi;
-  organization?: { documentId: string };
+  organization?: DocumentApi;
   public: boolean;
 }

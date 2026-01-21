@@ -1,5 +1,5 @@
 import { Injectable, effect, inject, resource, signal } from '@angular/core';
-import { JournalDateFields, JournalEntry } from './journal.types';
+import { JournalDateFields, JournalEntry, JournalEntryStatus } from './journal.types';
 import { ApiResponse, ApiService } from '../api/api.service';
 import { SessionService } from '../session/session.service';
 import { tap } from 'rxjs';
@@ -13,8 +13,9 @@ import { ZsMapStateService } from '../state/state.service';
 import { I18NService } from '../state/i18n.service';
 import saveAs from 'file-saver';
 import { SearchService } from '../search/search.service';
-import { IZsChangeset } from '@zskarte/types';
+import { OperationExportFile } from '../core/entity/operationExportFile';
 import { ChangesetService } from '../changeset/changeset.service';
+import { IZsChangeset } from '@zskarte/types';
 
 @Injectable({
   providedIn: 'root',
@@ -237,6 +238,17 @@ export class JournalService {
     return result;
   }
 
+  public static async getJournal(operationId: string) {
+    if (!operationId) {
+      return null;
+    }
+    const journal = await db.localJournalEntries.where({ operationId }).toArray();
+    return journal.map((entry) => {
+      const { id, createdAt, createdBy, publishedAt, updatedAt, updatedBy, operationId, fromCache, organizationId, uuid, documentId, ...rest } = entry;
+      return rest;
+    });
+  }
+
   public async getByNumber(messageNumber: number) {
     const operationId = this.operationId();
     if (!operationId) {
@@ -276,7 +288,7 @@ export class JournalService {
     return min - 1;
   }
 
-  private async messageNumberAlreadyExist(messageNumber: number, uuid?: string) {
+  public async messageNumberAlreadyExist(messageNumber: number, uuid?: string) {
     const operationId = this.operationId();
     const organizationId = this.organizationId();
     if (!operationId) {
@@ -295,7 +307,7 @@ export class JournalService {
         };
       } else if (await this.messageNumberAlreadyExist(entry.messageNumber)) {
         return {
-          error: { message: `messageNumber ${entry.messageNumber} already exist` },
+          error: { message: this._i18n.get('messageNumberAlreadyExists').replace('{number}', entry.messageNumber.toString()) },
           result: undefined,
         };
       }
@@ -340,7 +352,7 @@ export class JournalService {
             }
             if (await this.messageNumberAlreadyExist(entry.messageNumber)) {
               return {
-                error: { message: `messageNumber ${entry.messageNumber} already exist` },
+                error: { message: this._i18n.get('messageNumberAlreadyExists').replace('{number}', entry.messageNumber.toString()) },
                 result: undefined,
               };
             }
@@ -370,7 +382,7 @@ export class JournalService {
         await this.messageNumberAlreadyExist(entry.messageNumber, uuid || entry.uuid || documentId || entry.documentId)
       ) {
         return {
-          error: { message: `messageNumber ${entry.messageNumber} already exist` },
+          error: { message: this._i18n.get('messageNumberAlreadyExists').replace('{number}', entry.messageNumber.toString()) },
           result: undefined,
         };
       }
@@ -422,6 +434,13 @@ export class JournalService {
       }
     }
     return response;
+  }
+
+  public async importJournal(result: OperationExportFile) {
+    const journal = result.journal || []
+    for (const entry of journal) {
+      await this.save(entry);
+    }
   }
 
   public async save(entry: JournalEntry) {
@@ -712,16 +731,16 @@ export class JournalService {
       organization.logo_url = `${environment.apiUrl}${organization.logo_url}`;
     }
     let fileName = `${operation.name}_message${entry.messageNumber}_${new Date().toISOString().slice(0, 16)}.pdf`;
-    if (Object.keys(entry).length === 0){
-      operation.documentId = "";
-      operation.name = "";
-      fileName = `${organization.name}_message_template_${new Date().toISOString().slice(0, 10)}.pdf`;
-    }
-    let entryUrl;
+    let entryUrl: string | undefined;
     if (entry.messageNumber && entry.createdAt) {
       entryUrl = `${window.location.origin}/main/journal?operationId=${operation.documentId}&messageNumber=${entry.messageNumber}`;
     } else {
       this.deactivateQRCode(template);
+      if (Object.keys(entry).length === 0) {
+        operation.documentId = '';
+        operation.name = '';
+        fileName = `${organization.name}.pdf`;
+      }
     }
 
     const data = [
@@ -867,5 +886,16 @@ export class JournalService {
         fileName,
       );
     });
+  }
+
+  public getResponsibility(entry: JournalEntry) {
+    switch (entry.entryStatus) {
+      case JournalEntryStatus.AWAITING_MESSAGE:
+        return entry.visumMessage;
+      case JournalEntryStatus.AWAITING_DECISION:
+        return this._i18n.get(entry.department ?? 'allDepartments');
+      default:
+        return this._i18n.get(`journalEntryResponsibility_${entry.entryStatus}`);
+    }
   }
 }

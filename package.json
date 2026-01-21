@@ -31,6 +31,8 @@
     "build:app": "cd packages/app && npm run ng:build:prod",
     "build:server": "cd packages/server && npm run build",
     "debug:server": "cd packages/server && npm run debug",
+    "server:export": "cd packages/server && npm run export",
+    "server:import": "cd packages/server && npm run import",
     "cleanup": "tsx scripts/cleanup.ts",
     "postinstall": "patch-package"
   },
