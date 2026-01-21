@@ -52,12 +52,14 @@ export const zsMapStateMigration = (mapState: ZsMapStateAllVersions | undefined)
       Object.entries(newMapState.layers).forEach(([id, layer]) => (layer.id = id));
 
       //add initial changesetId
-      Object.keys(newMapState.drawElements).forEach((id) => {
-        const drawElementChangesetIds = newMapState.drawElementChangesetIds[id];
-        if (!drawElementChangesetIds || drawElementChangesetIds.length === 0) {
-          newMapState.drawElementChangesetIds[id] = ['0'];
-        }
-      });
+      if (newMapState.drawElements) {
+        Object.keys(newMapState.drawElements).forEach((id) => {
+          const drawElementChangesetIds = newMapState.drawElementChangesetIds[id];
+          if (!drawElementChangesetIds || drawElementChangesetIds.length === 0) {
+            newMapState.drawElementChangesetIds[id] = ['0'];
+          }
+        });
+      }
       mapState = newMapState;
       // Fallthrough intentional
     }
