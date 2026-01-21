@@ -38,4 +38,6 @@ LABEL org.opencontainers.image.description="Zivilschutz Karte Server (fork by sw
 LABEL org.opencontainers.image.licenses=MIT
 COPY --from=build --chown=node:node /app/package.json /app/package.json
 COPY --from=build --chown=node:node /app/node_modules /app/node_modules
+COPY --from=build --chown=node:node /app/packages/types /app/packages/types
+COPY --from=build --chown=node:node /app/packages/common /app/packages/common
 COPY --from=build --chown=node:node /app/packages/server /app/packages/server
