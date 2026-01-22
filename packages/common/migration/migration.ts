@@ -1,5 +1,5 @@
 import type { IZsMapStateV1, IZsMapStateV2, IZsMapStateV3, ZsMapState, ZsMapStateAllVersions } from '@zskarte/types';
-import { ZsMapLayerStateType } from '@zskarte/types';
+import { INITIAL_CHANGESET_ID, ZsMapLayerStateType } from '@zskarte/types';
 import { cloneDeep } from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -46,8 +46,12 @@ export const zsMapStateMigration = (mapState: ZsMapStateAllVersions | undefined)
       const newMapState = cloneDeep(mapState) as IZsMapStateV3;
 
       newMapState.version = 3;
-      newMapState.changesetIds = ['0'];
-      newMapState.drawElementChangesetIds = {};
+      if (!newMapState.changesetIds) {
+        newMapState.changesetIds = [INITIAL_CHANGESET_ID];
+      }
+      if (!newMapState.drawElementChangesetIds) {
+        newMapState.drawElementChangesetIds = {};
+      }
       //old layer generation had different id for object key and id field (the key is used on references)
       Object.entries(newMapState.layers).forEach(([id, layer]) => (layer.id = id));
 
@@ -56,7 +60,7 @@ export const zsMapStateMigration = (mapState: ZsMapStateAllVersions | undefined)
         Object.keys(newMapState.drawElements).forEach((id) => {
           const drawElementChangesetIds = newMapState.drawElementChangesetIds[id];
           if (!drawElementChangesetIds || drawElementChangesetIds.length === 0) {
-            newMapState.drawElementChangesetIds[id] = ['0'];
+            newMapState.drawElementChangesetIds[id] = [INITIAL_CHANGESET_ID];
           }
         });
       }
@@ -69,6 +73,13 @@ export const zsMapStateMigration = (mapState: ZsMapStateAllVersions | undefined)
       if (!convertedMapState.drawElements) {
         convertedMapState.drawElements = {};
       }
+      if (!convertedMapState.drawElementChangesetIds) {
+        convertedMapState.drawElementChangesetIds = {};
+      }
+      if (!convertedMapState.changesetIds) {
+        convertedMapState.changesetIds = [];
+      }
+      //prevent problems if there is no draw layer
       if (!convertedMapState.layers || Object.values(convertedMapState.layers).length === 0) {
         let layerId = Object.values(convertedMapState.drawElements).find((e) => e.layer)?.layer;
         if (!layerId) {
@@ -76,9 +87,7 @@ export const zsMapStateMigration = (mapState: ZsMapStateAllVersions | undefined)
         }
         convertedMapState.layers = { [layerId]: { id: layerId, type: ZsMapLayerStateType.DRAW, name: 'Layer 1' } };
       }
-      if (!convertedMapState.changesetIds) {
-        convertedMapState.changesetIds = [];
-      }
+
       return convertedMapState;
     }
   }

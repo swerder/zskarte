@@ -4,7 +4,6 @@ import { JournalEntry } from 'src/app/journal/journal.types';
 export enum OperationExportFileVersion {
   V1 = 'V1',
   V2 = 'V2',
-  V3 = 'V3',
 }
 
 // If you adjust this file you need to adjust the import as well

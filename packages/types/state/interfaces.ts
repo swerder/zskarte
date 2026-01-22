@@ -14,6 +14,8 @@ interface Sort {
     direction: SortDirection;
 }
 
+export const INITIAL_CHANGESET_ID = '0';
+
 export interface IZsChangeset {
   parentChangesetId: string;
   id: string;
@@ -228,7 +230,9 @@ export interface IZsJournalMessageEditConfig {
 }
 
 export interface IZsChangesetConfig {
+  hiddenMode: boolean;
   automerge: boolean;
+  conflictTakeOur: boolean;
 }
 
 //DIN paper dimension in mm, landscape

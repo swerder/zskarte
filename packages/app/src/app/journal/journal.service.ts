@@ -14,8 +14,8 @@ import { I18NService } from '../state/i18n.service';
 import saveAs from 'file-saver';
 import { SearchService } from '../search/search.service';
 import { OperationExportFile } from '../core/entity/operationExportFile';
-import { ChangesetService } from '../changeset/changeset.service';
 import { IZsChangeset } from '@zskarte/types';
+import { ChangesetService } from '../changeset/changeset.service';
 
 @Injectable({
   providedIn: 'root',
@@ -585,6 +585,9 @@ export class JournalService {
   }
 
   public startDrawing(entry: JournalEntry, value: boolean) {
+    if (value) {
+      this._changeset.newChangeset(entry.messageNumber, false, true);
+    }
     this.drawingEntry = value ? entry : null;
   }
 
@@ -623,6 +626,7 @@ export class JournalService {
     } else {
       this.drawingEntrySignal.set(null);
     }
+    this._state.finishCurrentChangeset();
   }
 
   private checkTextBlockSizeAndAdjust(

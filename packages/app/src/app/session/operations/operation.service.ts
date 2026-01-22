@@ -7,9 +7,8 @@ import {
   ZsMapLayerStateType,
   ZsOperationPhase,
   ZsMapStateSource,
-  IZsChangesetInternal,
-  IZsChangeset,
   IZsChangesetExport,
+  INITIAL_CHANGESET_ID,
 } from '@zskarte/types';
 import { DateTime } from 'luxon';
 import { BehaviorSubject } from 'rxjs';
@@ -17,12 +16,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { ApiService, IApiRequestOptions } from '../../api/api.service';
 import { OperationExportFile, OperationExportFileVersion } from '../../core/entity/operationExportFile';
 import { db } from '../../db/db';
-import { ImportDialogComponent } from '../../import-dialog/import-dialog.component';
 import { IpcService } from '../../ipc/ipc.service';
 import { SessionService } from '../session.service';
 import { JournalService } from 'src/app/journal/journal.service';
-import { JournalEntry } from 'src/app/journal/journal.types';
-import { INITIAL_CHANGESET_ID } from 'src/app/changeset/changeset.service';
 
 @Injectable({
   providedIn: 'root',
@@ -247,7 +243,7 @@ export class OperationService {
     const saveFile: OperationExportFile = {
       name: operation?.name ?? '',
       description: operation?.description ?? '',
-      version: OperationExportFileVersion.V3,
+      version: OperationExportFileVersion.V2,
       mapState: operation?.mapState ?? this.createMapstate() as ZsMapState,
       eventStates: operation?.eventStates ?? [],
       mapLayers: operation?.mapLayers ?? { baseLayer: undefined as unknown as ZsMapStateSource, layerConfigs: [] },     
